@@ -1,0 +1,107 @@
+Q1:  Find the different payment methods, number of transactions done and the number of quantity sold.
+Sol:  SELECT
+    ->     payment_method,
+    ->     COUNT(*) AS no_payments,
+    ->     SUM(quantity) AS no_qty_sold
+    -> FROM walmart
+    -> GROUP BY payment_method;
+
+Q2:  Identify the highest-rated category in each branch, displaying the branch, category and the avg rating.
+ Sol: WITH avg_ratings AS (
+    ->     SELECT
+    ->         branch,
+    ->         category,
+    ->         AVG(rating) AS avg_rating,
+    ->         ROW_NUMBER() OVER (PARTITION BY branch ORDER BY AVG(rating) DESC) AS rn
+    ->     FROM walmart
+    ->     GROUP BY branch, category
+    -> )
+    -> SELECT branch, category, avg_rating
+    -> FROM avg_ratings
+    -> WHERE rn = 1;
+
+Q3: Identify the busiest day for each branch based on the number of transactions
+Sol:  WITH daily_transactions AS (
+    ->     SELECT
+    ->         branch,
+    ->         DATE(date) AS day,
+    ->         COUNT(*) AS num_transactions,
+    ->         ROW_NUMBER() OVER (PARTITION BY branch ORDER BY COUNT(*) DESC) AS rn
+    ->     FROM walmart
+    ->     GROUP BY branch, DATE(date)
+    -> )
+    -> SELECT branch, day, num_transactions
+    -> FROM daily_transactions
+    -> WHERE rn = 1;
+
+Q4: Calculate the total quantity of items sold per payment method. List the payment method and total quantity
+Sol: SELECT
+    ->     payment_method,
+    ->     SUM(quantity) AS total_quantity
+    -> FROM walmart
+    -> GROUP BY payment_method;
+
+Q5:  Determine the average, minimum, and maximum rating of products for each city. List the city, avg rating, min and max rating
+Sol: SELECT
+    ->     city,
+    ->     AVG(rating) AS avg_rating,
+    ->     MIN(rating) AS min_rating,
+    ->     MAX(rating) AS max_rating
+    -> FROM walmart
+    -> GROUP BY city;
+
+Q6:  Calculate the total profit for each category by considering total profit as (unit_price*quantity*profit_margin). List category and total profit, ordered from highest to lowest.
+Sol: SELECT
+    ->   category,
+    ->   SUM(unit_price * quantity * profit_margin) AS total_profit
+    -> FROM walmart
+    -> GROUP BY category
+    -> ORDER BY total_profit DESC;
+
+Q7:  Determine the most common payment method for each branch and then display the branch and the preferred payment method
+Sol:  WITH payment_counts AS (
+    ->   SELECT
+    ->     branch,
+    ->     payment_method,
+    ->     COUNT(*) AS cnt,
+    ->     ROW_NUMBER() OVER (
+    ->       PARTITION BY branch
+    ->       ORDER BY COUNT(*) DESC
+    ->     ) AS rn
+    ->   FROM walmart
+    ->   GROUP BY branch, payment_method
+    -> )
+    -> SELECT
+    ->   branch,
+    ->   payment_method AS preferred_payment_method
+    -> FROM payment_counts
+    -> WHERE rn = 1;
+
+Q8:  Categorize sales into 3 group Morning, Afternoon, Evening and then find out each of the shift and the number of invoices.
+Sol: SELECT
+    ->   CASE
+    ->     WHEN HOUR(`date`) BETWEEN 6  AND 11 THEN 'Morning'
+    ->     WHEN HOUR(`date`) BETWEEN 12 AND 17 THEN 'Afternoon'
+    ->     ELSE 'Evening'
+    ->   END AS shift,
+    ->   COUNT(*) AS num_invoices
+    -> FROM walmart
+    -> GROUP BY shift;
+
+Q9: Identify 5 branch with highest decrease ratio in revenue compared to last year (current year 2023 and last year 2022)
+Sol: SELECT
+    ->     branch,
+    ->     ROUND(((revenue_2022 - revenue_2023) / revenue_2022) * 100, 2) AS decrease_ratio_percent,
+    ->     revenue_2022,
+    ->     revenue_2023
+    -> FROM (
+    ->     SELECT
+    ->         branch,
+    ->         SUM(CASE WHEN YEAR(date) = 2022 THEN total ELSE 0 END) AS revenue_2022,
+    ->         SUM(CASE WHEN YEAR(date) = 2023 THEN total ELSE 0 END) AS revenue_2023
+    ->     FROM walmart
+    ->     GROUP BY branch
+    -> ) AS yearly_data
+    -> WHERE revenue_2022 > 0
+    -> ORDER BY decrease_ratio_percent DESC
+    -> LIMIT 5;
